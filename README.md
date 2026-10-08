@@ -11,11 +11,34 @@ screenshot in one editor looks like the next.
 | Sublime Text | [`sublime-text/`](sublime-text/) | copy the `.sublime-color-scheme` into `Packages/User/` |
 | Sublime Merge | [`sublime-merge/`](sublime-merge/) | copy `Theme - Merge/` into `Packages/` |
 
-## Previews
+## Preview
 
-No screenshots are included in this repository. If you would like to add one,
-put it in `docs/screenshots/` and link it here — please use a real capture of
-the theme in use, not a mock-up.
+Every capture below runs the same palette — only the chrome around the code
+changes. Each one is full-size; click any image to see the detail.
+
+### Neovim
+
+`examples/showcase.ts`, the file explorer and the LSP statusline.
+
+![Tango Neovim in Neovim — showcase.ts with the file explorer open](docs/Neovim-1.png)
+
+![Tango Neovim in Neovim — YAML and Lua buffers with the symbol preview](docs/Neovim-2.png)
+
+### Sublime Text
+
+`showcase.ts` and this README, with the minimap, sidebar and the `Adaptive` UI
+chrome driven by the color scheme's `--*` variables.
+
+![Tango Neovim in Sublime Text — showcase.ts with the minimap and sidebar](docs/sublime-1.png)
+
+![Tango Neovim in Sublime Text — this README as Markdown source](docs/sublime-2.png)
+
+### Sublime Merge
+
+The commit-graph edge colors, the diff gutters and the tab bar — the parts of
+Merge that the `.sublime-theme` layer owns.
+
+![Tango Neovim in Sublime Merge — commit graph, diff view and file tree](docs/sublime-merge-1.png)
 
 ## Installation
 
@@ -144,9 +167,12 @@ tango-themes/
 │   │   └── Widget - Merge*.hidden-color-scheme
 │   ├── user-settings/               # drop into sublime-merge's Packages/User/
 │   └── README.md
+├── examples/
+│   └── showcase.ts                  # TypeScript syntax showcase (screenshot source)
 ├── docs/
 │   ├── palette.md                   # canonical palette + face mapping
-│   └── package-control.md           # how to publish to Package Control
+│   ├── package-control.md           # how to publish to Package Control
+│   └── *.png                        # screenshots used above
 ├── scripts/
 │   └── check-colors.py              # palette integrity checker
 └── .github/                         # issue templates + CI validation
