@@ -1,0 +1,54 @@
+name: Feature request
+description: Missing highlight group, missing UI coverage, missing plugin support
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most feature requests for this repository are really "this element falls back
+        to a default color". Those are bugs, not features — please use the bug
+        report template for those.
+
+  - type: dropdown
+    id: editor
+    attributes:
+      label: Which editor?
+      options:
+        - Neovim
+        - Sublime Text
+        - Sublime Merge
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What is missing?
+      description: The exact highlight group, `.sublime-theme` class, or scope.
+      placeholder: |
+        `CmpGhostText` is not defined, so inline ghost text uses Neovim's default
+        color.
+    validations:
+      required: true
+
+  - type: textarea
+    id: plugin
+    attributes:
+      label: Which plugin or UI element?
+      description: If it is a plugin, it has to be one you actually use — unsupported plugins are not themed speculatively.
+      placeholder: nvim-cmp 0.6+
+
+  - type: textarea
+    id: palette
+    attributes:
+      label: Which existing palette value should it use?
+      description: Must be an entry from docs/palette.md. New colors need a discussion first.
+      placeholder: "#888a85 — the comment/context grey, same tone as LspInlayHint."
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      placeholder: Ghost text currently clashes with real completion items.

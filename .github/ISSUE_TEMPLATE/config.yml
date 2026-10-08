@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Palette question
+    url: https://github.com/rohan-pckg/tango-themes/blob/main/docs/palette.md
+    about: The canonical palette and the Emacs to Neovim face mapping. Check here first.
+  - name: Tango Neovim discussions
+    url: https://github.com/rohan-pckg/tango-themes/discussions
+    about: Ask a question or share a screenshot.

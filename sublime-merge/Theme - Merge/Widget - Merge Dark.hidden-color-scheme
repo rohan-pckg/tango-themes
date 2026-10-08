@@ -1,0 +1,40 @@
+{
+  "name": "Tango Neovim Merge Widgets",
+  "globals": {
+    "foreground": "#eeeeec",
+    "background": "#1e1e1e",
+    "caret": "#fce94f",
+    "line_highlight": "#282828",
+    "selection": "#483d8b",
+    "selection_foreground": "#eeeeec",
+    "selection_border": "#3465a4",
+    "inactive_selection": "#483d8b",
+    "inactive_selection_foreground": "#eeeeec"
+  },
+  "rules": [
+    {
+      "name": "Comment",
+      "scope": "comment",
+      "foreground": "#888a85"
+    },
+    {
+      "name": "Keyword",
+      "scope": "keyword, storage",
+      "foreground": "#729fcf"
+    },
+    {
+      "scope": "constant",
+      "foreground": "#8ae234"
+    },
+    {
+      "scope": "string",
+      "foreground": "#ad7fa8",
+      "font_style": "italic"
+    },
+    {
+      "scope": "constant.character.escape",
+      "foreground": "#f57900",
+      "font_style": "bold"
+    }
+  ]
+}

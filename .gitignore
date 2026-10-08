@@ -1,0 +1,23 @@
+# Build artifacts
+*.pyc
+__pycache__/
+*.py[cod]
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Sublime backup files — the theme is versioned, these are not
+*.bak
+*.bak-*
+*.sublime-color-scheme.bak
+
+# Package Control generates this on install; it must never be committed
+package-metadata.json
+
+# Local scratch
+/tmp/

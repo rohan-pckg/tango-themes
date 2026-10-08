@@ -1,0 +1,102 @@
+name: Bug report
+description: Something renders in the wrong color, fails to load, or throws an error
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Before filing, please check whether the problem is
+        the palette or the implementation — this repository does not change the
+        Tango palette, so a report that the palette "looks wrong" will be closed.
+
+        If an element renders in **default Neovim / default Sublime colors**, that is
+        an implementation bug and is very welcome.
+
+  - type: dropdown
+    id: editor
+    attributes:
+      label: Which editor?
+      options:
+        - Neovim
+        - Sublime Text
+        - Sublime Merge
+        - More than one
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Editor version
+      description: e.g. `nvim 0.12.5`, or Sublime Text / Merge build number
+      placeholder: nvim 0.12.5
+    validations:
+      required: true
+
+  - type: input
+    id: theme-version
+    attributes:
+      label: Theme version or commit
+      placeholder: v1.0.0 / 1a2b3c4
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is it installed?
+      options:
+        - lazy.nvim
+        - packer.nvim
+        - vim-plug
+        - Manual (copied file)
+        - Sublime: copied into Packages/User
+        - Sublime Merge: copied into Packages
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong?
+      description: |
+        Name the highlight group, the `.sublime-theme` class, or the scope that is
+        wrong — not just "the theme looks off".
+      placeholder: |
+        Comment text renders in the default grey instead of #888a85.
+        Highlight group: @comment
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and from which palette entry?
+      description: Please reference an existing value from docs/palette.md.
+      placeholder: Expected #888a85 (the "comment / context" entry).
+    validations:
+      required: false
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a Lua file
+        2. Type a comment
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Errors
+      description: Neovim — run `:messages` after `:colorscheme tango` and paste anything relevant.
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: OS, terminal, whether `termguicolors` is on, a screenshot if you have one.

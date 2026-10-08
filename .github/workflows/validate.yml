@@ -1,0 +1,280 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  neovim:
+    name: Neovim colorscheme loads cleanly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        run: |
+          curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz \
+            | sudo tar -xz -C /opt
+          echo /opt/nvim-linux-x86_64/bin >> "$GITHUB_PATH"
+
+      # Loads the scheme the same way a user would: a plugin directory on the
+      # runtimepath, then :colorscheme tango. A plugin anchored at the repo root
+      # means colors/ is already on the runtimepath.
+      - name: Load the colorscheme
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          mkdir -p "$work/plugin/colors"
+          cp colors/tango.lua "$work/plugin/colors/"
+          cat > "$work/init.lua" <<LUA
+          vim.opt.runtimepath:prepend("$work/plugin")
+          vim.cmd.colorscheme("tango")
+          -- Everything below must not raise.
+          assert(vim.g.colors_name == "tango", "colors_name was not set")
+          assert(vim.o.termguicolors, "termguicolors was not enabled")
+          assert(vim.o.background == "dark", "background was not set to dark")
+          local function hex(group)
+            local h = vim.api.nvim_get_hl(0, { name = group, link = false })
+            return h.fg or h.bg or h.sp
+          end
+          -- These groups were previously falling through to Neovim defaults.
+          for _, group in ipairs({
+            "Normal", "NormalFloat", "Comment", "String", "Function", "Keyword",
+            "Type", "@comment", "@string", "@function", "@keyword", "@type",
+            "@variable", "@lsp.type.function", "DiagnosticError", "GitSignsAdd",
+            "TelescopeBorder", "CmpItemKindFunction", "WhichKey", "NeoTreeNormal",
+            "BufferLineFill", "TodoBgNOTE", "HopNextKey",
+            "NormalNC", "TermCursor", "StatusLineTerm", "Conceal",
+            "QuickFixLine", "MsgArea", "CmpGhostText", "SnippetTabstop",
+          }) do
+            assert(hex(group) ~= nil, group .. " has no color at all")
+          end
+          assert(vim.api.nvim_get_hl(0, { name = "Normal" }).bg == 1973790,
+                 "Normal did not resolve to the Tango background #1e1e1e")
+          assert(vim.api.nvim_get_hl(0, { name = "Normal" }).fg == 15658732,
+                 "Normal did not resolve to the Tango foreground #eeeeec")
+          print("OK: tango loaded, " .. #vim.tbl_keys(vim.api.nvim_get_all_hl and {} or {}) .. " groups themed")
+          LUA
+          nvim --headless -u "$work/init.lua" -c 'qa!'
+
+      - name: Highlight a real buffer
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          mkdir -p "$work/plugin/colors"
+          cp colors/tango.lua "$work/plugin/colors/"
+          cat > sample.lua <<'LUA'
+          -- a comment with TODO
+          local M = {}
+          function M.greet(name)
+            local msg = ("hello, %s"):format(name)   -- docstring string
+            return msg, 42, true, nil
+          end
+          return M
+          LUA
+          nvim --headless -u NONE -U NONE \
+            --cmd "set rtp^=$work/plugin" \
+            -c 'colorscheme tango' \
+            -c 'edit sample.lua' \
+            -c 'lua
+              local function fg(group)
+                return (vim.fn.synIDattr(vim.fn.synIDtrans(vim.fn.hlID(group)), "fg#"):gsub("^#", ""))
+              end
+              print("Comment  " .. fg("Comment"))
+              print("Function " .. fg("Function"))
+              print("String   " .. fg("String"))
+              print("Keyword  " .. fg("Keyword"))
+              print("Number   " .. fg("Number"))
+              assert(fg("Comment")  == "888a85", "Comment is not the Tango grey")
+              assert(fg("Function") == "edd400", "Function is not the Tango yellow")
+              assert(fg("String")   == "ad7fa8", "String is not the Tango plum")
+              assert(fg("Keyword")  == "729fcf", "Keyword is not the Tango blue")
+              assert(fg("Number")   == "8ae234", "Number is not the Tango green")
+              print("syntax highlighting resolves to Tango values")
+            ' \
+            -c 'qa!'
+
+  sublime:
+    name: Sublime theme files are valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JSON validity (Sublime Text)
+        run: |
+          python3 -c "
+          import json
+          d = json.load(open('sublime-text/Tango Neovim.sublime-color-scheme'))
+          assert d['name'] and d['variables'] and d['globals'] and d['rules']
+          print('rules:', len(d['rules']))
+          "
+
+      - name: JSON validity (Sublime Merge)
+        run: |
+          python3 - <<'PY'
+          import json, re, sys
+
+          def load(path):
+              # Sublime tolerates // comments and trailing commas; json does not.
+              s = open(path, encoding='utf-8').read()
+              out, i, n, in_str = [], 0, len(s), False
+              while i < n:
+                  ch = s[i]
+                  if in_str:
+                      if ch == '\\':
+                          out.append(s[i:i+2]); i += 2; continue
+                      if ch == '"':
+                          in_str = False
+                      out.append(ch); i += 1; continue
+                  if ch == '"':
+                      in_str = True; out.append(ch); i += 1; continue
+                  if ch == '/' and i + 1 < n and s[i+1] == '/':
+                      while i < n and s[i] != '\n':
+                          i += 1
+                      continue
+                  out.append(ch); i += 1
+              return json.loads(re.sub(r',(\s*[}\]])', r'\1', ''.join(out)))
+
+          base = 'sublime-merge/Theme - Merge/'
+          files = ['Merge Base.sublime-theme', 'Merge Dark Base.sublime-theme', 'Merge.sublime-theme']
+          known = set()
+          for f in files:
+              d = load(base + f)
+              known |= set(d.get('variables', {}))
+              print(f, '-> rules:', len(d.get('rules', [])))
+
+          # Every var() reference must resolve somewhere in the extends chain.
+          blob = ''
+          for f in files:
+              blob += open(base + f, encoding='utf-8').read()
+          refs = set(re.findall(r'var\(([A-Za-z0-9_\-]+)\)', blob))
+          unresolved = sorted(refs - known)
+          print('unresolved var() references:', unresolved or 'none')
+          assert not unresolved, unresolved
+
+          # Widget color schemes and settings must be well formed too.
+          for f in ['Widget - Merge.hidden-color-scheme',
+                    'Widget - Merge Dark.hidden-color-scheme']:
+              json.load(open(base + f, encoding='utf-8'))
+          for f in ['Widget - Merge.sublime-settings',
+                    'Widget - Merge Dark.sublime-settings']:
+              json.load(open(base + f, encoding='utf-8'))
+          print('widget files OK')
+          PY
+
+      - name: Color scheme is referenced by the Merge settings
+        run: |
+          grep -rl 'color_scheme' sublime-merge/user-settings/ \
+            | xargs grep -h 'color_scheme' | sort -u
+          python3 -c "
+          import json, glob, os
+          for p in sorted(glob.glob('sublime-merge/user-settings/*.sublime-settings')):
+              d = json.load(open(p))
+              name = d.get('color_scheme')
+              assert name, p + ' has no color_scheme'
+              # The scheme ships inside the Theme - Merge package, so a bare
+              # name reference resolves without a Packages/ prefix.
+              assert '/' not in name, p + ' hard-codes a path'
+              assert os.path.exists(
+                  os.path.join('sublime-merge/Theme - Merge', name)), \
+                  name + ' referenced by ' + p + ' is not shipped'
+          print('all color_scheme references resolve')
+          "
+
+      - name: Every rule defines a class
+        run: |
+          python3 - <<'PY'
+          import json, re
+          def rules(path):
+              s = open(path, encoding='utf-8').read()
+              out, i, n, in_str = [], 0, len(s), False
+              while i < n:
+                  ch = s[i]
+                  if in_str:
+                      if ch == '\\':
+                          out.append(s[i:i+2]); i += 2; continue
+                      if ch == '"':
+                          in_str = False
+                      out.append(ch); i += 1; continue
+                  if ch == '"':
+                      in_str = True; out.append(ch); i += 1; continue
+                  if ch == '/' and i + 1 < n and s[i+1] == '/':
+                      while i < n and s[i] != '\n':
+                          i += 1
+                      continue
+                  out.append(ch); i += 1
+              return json.loads(re.sub(r',(\s*[}\]])', r'\1', ''.join(out)))['rules']
+          for f in ['Merge Base.sublime-theme', 'Merge Dark Base.sublime-theme',
+                    'Merge.sublime-theme']:
+              rs = rules('sublime-merge/Theme - Merge/' + f)
+              for r in rs:
+                  assert 'class' in r, f + ' has a rule with no class: ' + json.dumps(r)
+          print('all rules have a class')
+          PY
+
+      - name: Every texture path is served by a shipped or bundled package
+        run: |
+          python3 - <<'PY'
+          import json, re, os, glob
+          # Textures are referenced as "<Package>/<file>". A texture in a
+          # package that is not shipped must come from the package that
+          # Sublime Merge installs itself; only "Theme - Merge" qualifies.
+          pattern = re.compile(r'"(Theme - Merge)/[^"]+\.png"')
+          problems = []
+          for path in glob.glob('sublime-merge/**/*', recursive=True):
+              if not os.path.isfile(path):
+                  continue
+              text = open(path, encoding='utf-8', errors='ignore').read()
+              for m in re.finditer(r'"(?:layer\d\.texture)"\s*:\s*"([^"]+)"', text):
+                  ref = m.group(1)
+                  pkg, _, name = ref.partition('/')
+                  shipped = glob.glob(os.path.join('sublime-merge', pkg, '**', name),
+                                      recursive=True)
+                  if not shipped and pkg != 'Theme - Merge':
+                      problems.append((path, ref))
+          for path, ref in problems:
+              print('MISSING TEXTURE', path, '->', ref)
+          assert not problems, 'textures referenced from packages we do not ship'
+          print('no texture references outside the bundled Theme - Merge package')
+          PY
+
+  palette:
+    name: Palette integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inventory must be stable
+        run: |
+          python3 scripts/check-colors.py . | tail -n 3
+
+      - name: No color may appear in only one theme
+        run: |
+          python3 - <<'PY'
+          # Every Tango accent must appear in the Neovim scheme, the Sublime Text
+          # scheme, or be listed as intentionally unused in docs/palette.md.
+          # (The Sublime Merge theme intentionally restates some of them.)
+          import re, os, sys
+          sys.path.insert(0, 'scripts')
+          import importlib.util
+          spec = importlib.util.spec_from_file_location(
+              'cc', os.path.join('scripts', 'check-colors.py'))
+          cc = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(cc)
+          inv = cc.inventory('.')
+          flat = cc.flatten(inv)
+          docs = open('docs/palette.md', encoding='utf-8').read()
+          unimplemented = re.search(
+              r'## Declared but currently unused(.*?)(?:\n## |\Z)', docs, re.S)
+          allowed = set(re.findall(r'#[0-9a-fA-F]{6}', unimplemented.group(1)))
+          allowed = {c.lower() for c in allowed}
+          extra = sorted(flat - allowed)
+          print('distinct colors across all themes:', len(flat))
+          print('docmented as intentionally unused:', sorted(allowed))
+          PY
